@@ -61,6 +61,22 @@ var width = 900,
     height = 510,
     root;
 
+function detectmob() {
+ if( navigator.userAgent.match(/Android/i)
+ || navigator.userAgent.match(/webOS/i)
+ || navigator.userAgent.match(/iPhone/i)
+ || navigator.userAgent.match(/iPad/i)
+ || navigator.userAgent.match(/iPod/i)
+ || navigator.userAgent.match(/BlackBerry/i)
+ || navigator.userAgent.match(/Windows Phone/i)
+ ){
+    return true;
+  }
+ else {
+    return false;
+  }
+} 
+
 function getUrlVars() {
     var vars = {};
     var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
@@ -80,8 +96,8 @@ if (summary_type.match(/cat/i)) {
 }
 
 var force = d3.layout.force()
-    //.linkDistance(80)
-    .linkDistance(25)
+    .linkDistance(40)
+    //.linkDistance(25)
     .charge(-60)
     .gravity(.05)
     .size([width, height])
@@ -146,6 +162,7 @@ function update() {
   nodeEnter.append("text")
       .attr("dy", ".35em")
       .text(function(d) { return d.name; });
+      //.text(function(d) { return ""; });
 
   node.select("circle")
       .style("fill", color);
@@ -169,6 +186,8 @@ function color(d) {
       : "#fd8d3c"; // leaf node
 }
 
+
+
 // Toggle children on click.
 function click(d) {
   if (d3.event.defaultPrevented) return; // ignore drag
@@ -176,7 +195,11 @@ function click(d) {
   	//url = d.location+ "?fn=" + d.name + "&u=" + user + "&c=File";
   	//window.open(encodeURI(url));
   	//url = "viewer.html?v=" + d.location+ "&fn=" + d.name + "&u=" + user + "&c=File";
-  	url = "viewer.html?v=" + d.location+ "&fn=" + d.name + "&u=" + user + "&c=" + summary_type;
+        if (detectmob()) {
+  	  url = d.location+ "?fn=" + d.name + "&u=" + user + "&c=" + summary_type;
+        } else {
+  	  url = "viewer.html?v=" + d.location+ "&fn=" + d.name + "&u=" + user + "&c=" + summary_type;
+        }
   	window.open(encodeURI(url));
   }
   if (d.children) {
@@ -208,14 +231,27 @@ function flatten(root) {
       .on("change", change);
   function change() {
     var s;
+    var m = false;
+    if (detectmob()) {
+       m = true;
+    }
     if (summary_type.match(/cat/i)) {
       summary_type = 'File';
-      s = "segSummary.html&u=" + user + '&c=' + summary_type;
+      if (m) {
+         s = "segSummary.html?u=" + user + '&c=' + summary_type;
+      } else {
+         s = "viewer.html?v=segSummary.html&u=" + user + '&c=' + summary_type;
+      }
     } else {
       summary_type = 'Cat';
-      s = "category_map/index.html&u=" + user + '&c=' + summary_type;
+      if (m) {
+         s = "category_map/index.html?u=" + user + '&c=' + summary_type + '&m='+ m;
+      } else {
+         s = "viewer.html?v=category_map/index.html&u=" + user + '&c=' + summary_type;
+      }
     }
-    window.location.href = "viewer.html?v=" + s;
+    window.location.href = s;
+    //window.location.href = "viewer.html?v=" + s;
   }
 
 </script>
@@ -236,7 +272,8 @@ legend.append("g")
 var formatPercent = d3.format(".0%"),
     formatNumber = d3.format(".0f");
 
-var json_fn = 'output/' + user + '/' + user + ext + '.json';
+var json_fn = 'output/' + user + '/' + user + '.all.json';
+//console.log('json_fn:',json_fn);
 
 //var input_data = [0.18, 0.06, 0.60];
 var input_data = [],
@@ -252,21 +289,27 @@ $.getJSON(json_fn, function (data) {
    seg_data.push(val.children.length)
  });
 //console.log('input_data:',input_data);
+//console.log('input_datalen:',input_data.length);
+//console.log('seg_data:',seg_data);
 
 var threshold = d3.scaleThreshold()
     //.domain([0.11, 0.22, 0.33, 0.50])
     //.range(["#6e7c5a", "#a0b28f", "#d8b8b3", "#b45554", "#760000"]);
     .domain(input_data)
-    .range(colorbrewer.Oranges[input_data.length]);
+    //.domain(input_data);
+    //.range(colorbrewer.Oranges[input_data.length]);
+    .range(colorbrewer.Oranges[5]);
 
 threshold = d3.scale.quantile()
     .domain(input_data)
-    .range(colorbrewer.Oranges[seg_data.length]);
+    //.range(colorbrewer.Oranges[seg_data.length]);
+    .range(colorbrewer.Oranges[5]);
     //.range(colorbrewer.Oranges[input_data.length]);
 
 var x = d3.scaleLinear()
     .domain([0, 1])
-    .range([d3.min(seg_data), d3.max(seg_data)]); // controles spacing of ticks
+    //.range([d3.min(seg_data), d3.max(seg_data)]); // controles spacing of ticks
+    .range([d3.min(seg_data)*20, d3.max(seg_data)*20]); // controles spacing of ticks
     //.range([0, 209]); // controles spacing of ticks
     //.range([0, 1500]); // controles spacing of ticks, default to 1500
 

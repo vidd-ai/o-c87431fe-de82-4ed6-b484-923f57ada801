@@ -34,6 +34,12 @@ body {
     .node text {
         font: 10px sans-serif;
         pointer-events: none;
+	/* stroke */
+ 	fill: black;
+  	stroke: white;
+  	stroke-width:1px;
+  	// stroke-dasharray: 2,2;
+  	stroke-linejoin: round;
     }
 
     .text {
@@ -82,7 +88,6 @@ var demo = 'no';
 var fn = getUrlVars()['fn'];
 var user = getUrlVars()['u'];
 var select_str = '# mpv EDL v0;';  // as required by EDL file syntax as first line, may not need dangling ;
-
 demo = getUrlVars()['d'];
 document.title = "your Vidd.ai segment map - " + fn;
 var select_set = new Set();
@@ -97,45 +102,60 @@ var svg = d3.select("#graphDiv").append("svg")
 
 
 var json_fn = 'output/' + user + '/' + fn + '/d3.json';
-var meta_fn = 'output/' + user + '/' + fn + '/meta.json';
 
 // read user json file
 d3.json(json_fn, function(error, json) {
   if (error) throw error;
 
   in_graph = json;
-  update('long', in_graph);
+  //update('long', in_graph);
+  if (in_graph.hits) {
+    update('hits', in_graph);
+  } else {
+    update('vary', in_graph);
+  }
 });
 
 function update(filter, in_graph) {
    var graph;
+/*
    switch(filter) {
-        case 'short': graph = in_graph.short; 
-       	   $('#segFilter').fadeIn().html('Shortest ');
+        case 'short': graph = in_graph.short; break;
+        case 'all': graph = in_graph.all; break;
+        case 'vary': graph = in_graph.vary; break;
+        case 'long': graph = in_graph.long; break;
+        case 'selected': graph = in_graph; break;
+        default: graph = in_graph.long; break;
+   }
+*/
+
+   switch(filter) {
+        case 'short': graph = in_graph.short;
+           $('#segFilter').fadeIn().html('Shortest ');
            break;
-        case 'all': graph = in_graph.all; 
-       	   $('#segFilter').fadeIn().html('All ');
+        case 'all': graph = in_graph.all;
+           $('#segFilter').fadeIn().html('All ');
            break;
         case 'vary': graph = in_graph.vary;
-       	   $('#segFilter').fadeIn().html('Suggested ');
+           $('#segFilter').fadeIn().html('Suggested ');
            break;
         case 'hits': graph = in_graph.hits;
-       	   $('#segFilter').fadeIn().html('Hits ');
+           $('#segFilter').fadeIn().html('Hits ');
            break;
         case 'hits_maybe': graph = in_graph.hits_maybe;
-       	   $('#segFilter').fadeIn().html('Maybes ');
+           $('#segFilter').fadeIn().html('Maybes ');
            break;
         case 'long': graph = in_graph.long;
-       	   $('#segFilter').fadeIn().html('Longest ');
+           $('#segFilter').fadeIn().html('Longest ');
            break;
         case 'longish': graph = in_graph.medium2;
-       	   $('#segFilter').fadeIn().html('Longish ');
+           $('#segFilter').fadeIn().html('Longish ');
            break;
         case 'shortish': graph = in_graph.medium1;
-       	   $('#segFilter').fadeIn().html('Shortish ');
+           $('#segFilter').fadeIn().html('Shortish ');
            break;
         case 'selected': graph = in_graph;
-       	   $('#segFilter').fadeIn().html('Selected ');
+           $('#segFilter').fadeIn().html('Selected ');
            break;
         default: graph = in_graph.long; break;
    }
@@ -184,16 +204,23 @@ function update(filter, in_graph) {
       .style("fill", function(d) { return color(d.group? d.group: 10); });
 
   node.append("text")
-      //.attr("dy", ".35em")
+     //.attr("dy", ".35em")
       .attr("x",function(d){ return -(d.image_width / 2 - nodeSize + 7) })
       .attr("y",function(d){ return -(d.image_height / 2 - nodeSize) })
       .attr("dy", ".70em")
+      //.attr("style", "color:white;text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;")
       //.attr("style", "fill:none;fill-opacity:1;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;")
       .attr("text-anchor", "middle")
       //.text(function(d) { return (d.atom?d.atom:""); });
       .text(function(d) {
-	if (d.atom >= 0) {return d.atom;}
-	else {return (d.name); }
+        if (d.atom >= 0) {return d.atom;}
+        else {return (d.name); }
+      //.attr("dy", ".35em")
+      //.attr("text-anchor", "middle")
+      //.text(function(d) { return (d.atom?d.atom:""); });
+      //.text(function(d) {
+	//if (d.atom >= 0) {return d.atom;}
+	//else {return (d.name); }
       });
 
   node.append("image")
@@ -232,13 +259,13 @@ function update(filter, in_graph) {
 			d3.select(this).classed('selected', false);
 			d3.select(this).style('opacity', 1);
 			select_set.delete(d.atom);
-			//console.log('just unselected, select_set:',select_set);
+			console.log('just unselected, select_set:',select_set);
 		} else {
 			alert ('Segment ' + d.atom + ' selected. Click again unselect.');
 			d3.select(this).classed('selected', true);
 			d3.select(this).style('opacity', 0.1);
 			select_set.add(d.atom);
-			//console.log('just selected, select_set:',select_set);
+			console.log('just selected, select_set:',select_set);
 		}
 	})
 	.on("mouseenter", function(d) {
@@ -289,7 +316,7 @@ function update(filter, in_graph) {
 
     $(document).ready(function () {
         var selected_graph = {}, all_nodes = [];
-        var org_meta = false;		// overload
+        var org_meta = false;           // overload
 
         selected_graph["nodes"] = [];
         selected_graph["links"] = [];
@@ -300,21 +327,27 @@ function update(filter, in_graph) {
               return;
             }
             all_nodes = data["all"].nodes;
-            //console.log('all_nodes:',all_nodes);
+            console.log('all_nodes:',all_nodes);
             // show longish button if json entry
             if ("medium2" in data) {
-		$('#longish').show();
-	    }
+                $('#longish').show();
+            }
             if ("medium1" in data) {
-		$('#shortish').show();
-	    }
- 
+                $('#shortish').show();
+            }
+            if ("hits" in data) {
+                $('#hits').show();
+            }
+            if ("hits_maybe" in data) {
+                $('#hits_maybe').show();
+            }
         })
 
+	var meta_fn = 'output/' + user + '/' + fn + '/meta.json';
         $.getJSON(meta_fn, function (data) {
-	    if ("fcpxml_meta" in data) {
-            	org_meta = data["fcpxml_meta"];
-	    }
+            if ("fcpxml_meta" in data) {
+                org_meta = data["fcpxml_meta"];
+            }
             //console.log('org_meta:',org_meta);
         })
 
@@ -323,22 +356,11 @@ function update(filter, in_graph) {
 	if (getUrlVars()['c'] == 'File') {
 		cat_or_file = 'File';
 	}
-
-       	$('#segFilter').fadeIn().html('Longest '); // default when document loads
-       	$('#fileSummary').fadeIn().html('segments in ' + cat_or_file + ": " + fn + "<br/>");
+       	$('#fileSummary').fadeIn().html('Segments in ' + cat_or_file + ": " + fn + "<br/>");
        	//$('#summaryPage').fadeIn().html('VIDD ' + cat_or_file + " map");
 
- 
        	$('#long').on('click', function () {
                 update('long', in_graph);
-            });
-
-       	$('#longish').on('click', function () {
-                update('longish', in_graph);
-            });
-
-       	$('#shortish').on('click', function () {
-                update('shortish', in_graph);
             });
 
        	$('#short').on('click', function () {
@@ -349,7 +371,7 @@ function update(filter, in_graph) {
                 update('vary', in_graph);
             });
 
-        $('#hits').on('click', function () {
+       $('#hits').on('click', function () {
                 update('hits', in_graph);
             });
 
@@ -370,7 +392,7 @@ function update(filter, in_graph) {
             });
 
         $('#VIDD').on('click', function () {
-            window.location.href = "https://viddai.bitbucket.io";
+            window.location.href = "http://Vidd.ai";
             });
 
         d3.select('#NoFace').on('click', function () {
@@ -406,12 +428,13 @@ function update(filter, in_graph) {
            update('selected', selected_graph);
         });
 
-        d3.select('#Send').on('click', function () {
-            var ids2 = {};
-            var nodes = [...select_set];
+	function writeTimeline(ids2, nodes, org_meta) {
+console.log('in writeTimeline, org_meta:',org_meta);
 
 	    if (org_meta) {
-	      var meta = {...org_meta};
+	      //var meta = {...org_meta}; // spread syntax does not work for Safar 10.00 and less
+	      var meta = org_meta;
+	      console.log('meta:',meta);
 	      // default settings for vidd_draft timelines
 	      var _vidd_height = 1080;		// 1080p
 	      var _vidd_width = 1920;		
@@ -554,6 +577,13 @@ function update(filter, in_graph) {
 
 	      //console.log('select_str_fcpxml:',select_str_fcpxml);
 	    } // if (org_meta)
+	}
+
+        d3.select('#Send').on('click', function () {
+            var ids2 = {};
+            var nodes = [...select_set];
+
+	    writeTimeline(ids2, nodes, org_meta);
 
 	    //console.log('select_str:',select_str);
 
@@ -589,6 +619,40 @@ function update(filter, in_graph) {
 
 	    return;
         });
+
+        d3.select('#Send_org').on('click', function () {
+            var ids2 = {};
+            var nodes = [...select_set];
+
+            for (var i = 0; i < nodes.length; i++) {
+		ids2[i] = {"atom": nodes[i], "sec_start": all_nodes[nodes[i]].sec_start, "sec_end": all_nodes[nodes[i]].sec_end, "sec_len": all_nodes[nodes[i]].sec_len};
+		select_str += '\n' + fn + ',' + all_nodes[nodes[i]].sec_start.toString() + ',' + all_nodes[nodes[i]].sec_len.toString() + ';';
+            }
+
+	    //console.log('select_str:',select_str);
+	    // write selected_str to text file
+	    var a = document.getElementById('download_a');
+	    a.href = "data:text/plain;charset=UTF-8," + encodeURIComponent(select_str); // nb: must encode URI or won't save properly
+	    a.download = fn + '.edl';
+	    a.click(); // fire click event
+	    select_str = '# mpv EDL v0;'; // reset 
+
+	    // save selected on server
+	    var surl = 'http://stream.vidd.ai/receiveSelected.php?u=' + user + '&fn=' + fn;
+	    console.log('ids2', ids2);
+
+            $.ajax({
+                 type: "POST",
+                 url: surl,
+                 contentType: "application/json",
+                 dataType:"json",
+                 data: JSON.stringify(ids2),
+                 success: function (response) {
+                    alert(response.responseText);
+                  }
+              });
+	    return;
+        });
     });
 
 </script>
@@ -599,13 +663,13 @@ function update(filter, in_graph) {
     <button id="HasFace">Has Face</button>
 -->
     <button id="vary">Suggested segments</button>
-    <button id="hits">Hits</button>
-    <button id="hits_maybe">Maybes</button>
+    <button id="hits" style="display:none">Hits</button>
+    <button id="hits_maybe" style="display:none">Maybes</button>
     <button id="long">Longest</button>
     <button id="longish" style="display:none">Longish</button>
     <button id="shortish" style="display:none">Shortish</button>
     <button id="short">Shortest</button>
-    <button id="all">All segments</button>
+    <button id="all">All</button>
     &nbsp;&nbsp;&nbsp;
     |
     &nbsp;&nbsp;&nbsp;
@@ -615,8 +679,10 @@ function update(filter, in_graph) {
     &nbsp;&nbsp;&nbsp;
     |
     &nbsp;&nbsp;&nbsp;
+<!--
     <button id="categoryMap">Category map</button>
     <button id="fileMap">File map</button>
+-->
     <button id="VIDD">Vidd.ai</button>
     <br /><br />
 </div>
@@ -625,4 +691,3 @@ function update(filter, in_graph) {
 
 </body>
 </html>
-
